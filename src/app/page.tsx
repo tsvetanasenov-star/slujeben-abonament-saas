@@ -10,6 +10,9 @@ import { useToday, startOfDay } from "@/lib/useToday";
 import { createClient } from "@/lib/supabase";
 import type { Contract } from "@/types/database";
 import { Search, Plus, AlertTriangle, Clock, CalendarCheck, FileCheck2 } from "lucide-react";
+import { NewContractDialog } from "@/components/contracts/NewContractDialog";
+import { RecordPaymentDialog } from "@/components/contracts/RecordPaymentDialog";
+import { PaymentHistoryDrawer } from "@/components/contracts/PaymentHistoryDrawer";
 
 type FilterTab = "all" | "overdue" | "upcoming" | "expiring" | "archived";
 
@@ -21,6 +24,11 @@ export default function HomePage() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [activeTab, setActiveTab] = useState<FilterTab>("all");
+  const [newContractOpen, setNewContractOpen] = useState(false);
+  const [paymentOpen, setPaymentOpen] = useState(false);
+  const [paymentContract, setPaymentContract] = useState<Contract | null>(null);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [historyContract, setHistoryContract] = useState<{ id: string; client_name: string } | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -146,6 +154,99 @@ export default function HomePage() {
     };
   }, [contracts, baseDate]);
 
+  const handleNewContract = async () => {
+    setNewContractOpen(true);
+  };
+
+  const handleRecordPayment = async (contract: Contract) => {
+    setPaymentContract(contract);
+    setPaymentOpen(true);
+  };
+
+  const handleViewHistory = (contract: Contract) => {
+    setHistoryContract({ id: contract.id, client_name: contract.client_name });
+    setHistoryOpen(true);
+  };
+
+  const handleCreateContract = async (payload: any) => {
+    try {
+      const { data, error } = await supabase.from("contracts").insert({
+        client_name: payload.client_name,
+        identifier: payload.identifier,
+        contact_info: payload.contact_info || null,
+        contract_number: payload.contract_number || null,
+        start_date: payload.start_date,
+        end_date: payload.end_date,
+        monthly_fee: payload.monthly_fee,
+        notes: payload.notes || null,
+        is_archived: false,
+        paid_until_date: payload.start_date,
+      });
+
+      if (error) {
+        setErrorMsg(error.message || "Грешка при създаване на договора");
+      } else {
+        setNewContractOpen(false);
+        const { data: refreshed, error: reloadError } = await supabase
+          .from("contracts")
+          .select("*")
+          .order("created_at", { ascending: false });
+        if (!reloadError && refreshed) {
+          setContracts(refreshed);
+        }
+      }
+    } catch (err) {
+      setErrorMsg(err instanceof Error ? err.message : "Неочаквана грешка");
+    }
+  };
+
+  const handleSavePayment = async (payment: any) => {
+    try {
+      const { error: payError } = await supabase.from("payments").insert({
+        contract_id: payment.contract_id,
+        payment_date: payment.paymentDate,
+        amount: payment.amount,
+        months_covered: payment.monthsCovered,
+        payment_method: payment.paymentMethod,
+        document_number: payment.documentNumber || null,
+      });
+
+      if (payError) {
+        setErrorMsg(payError.message || "Грешка при записване на плащането");
+        return;
+      }
+
+      const newPaidUntil = new Date(payment.contract.paid_until_date);
+      newPaidUntil.setMonth(newPaidUntil.getMonth() + payment.monthsCovered);
+
+      const { error: updateError } = await supabase
+        .from("contracts")
+        .update({ paid_until_date: newPaidUntil.toISOString().split("T")[0] })
+        .eq("id", payment.contract_id);
+
+      if (updateError) {
+        setErrorMsg(updateError.message || "Грешка при обновяване на договора");
+      } else {
+        setPaymentOpen(false);
+        setPaymentContract(null);
+        const { data: refreshed, error: reloadError } = await supabase
+          .from("contracts")
+          .select("*")
+          .order("created_at", { ascending: false });
+        if (!reloadError && refreshed) {
+          setContracts(refreshed);
+        }
+      }
+    } catch (err) {
+      setErrorMsg(err instanceof Error ? err.message : "Неочаквана грешка");
+    }
+  };
+
+  const handleHistoryClose = () => {
+    setHistoryOpen(false);
+    setHistoryContract(null);
+  };
+
   return (
     <main className="min-h-screen bg-slate-50 p-6">
       <div className="mx-auto max-w-7xl space-y-6">
@@ -257,14 +358,56 @@ export default function HomePage() {
         ) : (
           <ContractsTable
             contracts={filteredContracts}
-            onRecordPayment={() => {}}
-            onViewHistory={() => {}}
+            onRecordPayment={(contract) => handleRecordPayment(contract)}
+            onViewHistory={(contract) => handleViewHistory(contract)}
             onRenew={() => {}}
-            onNewContract={() => {}}
+            onNewContract={() => handleNewContract()}
             today={today ?? baseDate ?? new Date(2026, 0, 1)}
           />
         )}
       </div>
-    </main>
+</main>
+
+  {/* New Contract Dialog */}
+  <NewContractDialog
+    onOpenChange={setNewContractOpen}
+    open={newContractOpen}
+    onCreate={handleCreateContract}
+  />
+
+  {/* Payment Dialog */}
+  <RecordPaymentDialog
+    contract={paymentContract}
+    onClose={() => {
+      setPaymentOpen(false);
+      setPaymentContract(null);
+    }}
+    onSave={(payment) => handleSavePayment(payment)}
+  />
+
+  {/* History Drawer */}
+  <PaymentHistoryDrawer
+    contract={historyContract}
+    onClose={handleHistoryClose}
+  />
+{/* New Contract Dialog */}
+  <NewContractDialog
+    onOpenChange={setNewContractOpen}
+    open={newContractOpen}
+    onCreate={handleCreateContract}
+  />
+
+  {/* Payment Dialog */}
+  <RecordPaymentDialog
+    contract={paymentContract}
+    onClose={() => {
+      setPaymentOpen(false);
+      setPaymentContract(null);
+    }}
+    onSave={(payment) => handleSavePayment(payment)}
+  />
+
+  /* Dialogs are placed inside <main> tag above */
+
   );
 } 
