@@ -132,7 +132,14 @@ export function RecordPaymentDialog({ contract, onClose, onSave }: RecordPayment
         <DialogHeader>
           <DialogTitle>Запиши плащане</DialogTitle>
           <DialogDescription>
-            {contract ? `Клиент: <strong>{contract?.client_name || contract?.clientName || "—"}</strong>` : ""}
+            {contract ? (
+              <p className="text-sm text-muted-foreground">
+                Клиент:{" "}
+                <strong className="font-semibold text-foreground">
+                  {contract?.client_name || "—"}
+                </strong>
+              </p>
+            ) : ""}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4 pt-4">
