@@ -32,9 +32,9 @@ export function ContractsTable({
   const todayStart = startOfDay(today);
 
   const sortedContracts = [...contracts].sort((a, b) => {
-    const aPaid = new Date(a.paid_until_date);
+    const aPaid = a.paid_until_date ? new Date(a.paid_until_date) : new Date(a.start_date || new Date().toISOString().split("T")[0]);
     aPaid.setHours(0, 0, 0, 0);
-    const bPaid = new Date(b.paid_until_date);
+    const bPaid = b.paid_until_date ? new Date(b.paid_until_date) : new Date(b.start_date || new Date().toISOString().split("T")[0]);
     bPaid.setHours(0, 0, 0, 0);
     const aOverdue = aPaid < todayStart;
     const bOverdue = bPaid < todayStart;

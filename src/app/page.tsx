@@ -170,6 +170,12 @@ export default function HomePage() {
 
   const handleCreateContract = async (payload: any) => {
     try {
+      const monthlyFee = Number(payload.monthly_fee);
+      if (!monthlyFee || monthlyFee <= 0) {
+        setErrorMsg("Месечната такса трябва да е по-голяма от 0.");
+        return;
+      }
+
       const { data, error } = await supabase.from("contracts").insert({
         client_name: payload.client_name,
         identifier: payload.identifier,
@@ -177,7 +183,7 @@ export default function HomePage() {
         contract_number: payload.contract_number || null,
         start_date: payload.start_date,
         end_date: payload.end_date,
-        monthly_fee: payload.monthly_fee,
+        monthly_fee: monthlyFee,
         notes: payload.notes || null,
         is_archived: false,
         paid_until_date: payload.start_date,
@@ -187,6 +193,38 @@ export default function HomePage() {
         setErrorMsg(error.message || "Грешка при създаване на договора");
       } else {
         setNewContractOpen(false);
+        // Ако е отбележит "Клиентът плаща при сключване на договора", създай начално плащане
+        const inserted = (data as unknown as any[])?.[0];
+        if (payload.payNow && payload.monthsCovered && inserted?.id) {
+          const initialPaidUntil = new Date(payload.start_date);
+          initialPaidUntil.setMonth(initialPaidUntil.getMonth() + payload.monthsCovered);
+          const initialAmount = monthlyFee * payload.monthsCovered;
+
+          const { error: payError } = await supabase.from("payments").insert({
+            contract_id: inserted.id,
+            payment_date: payload.start_date,
+            amount: initialAmount,
+            months_covered: payload.monthsCovered,
+            payment_method: "Банков превод",
+            document_number: "Инициално",
+          });
+
+          if (payError) {
+            setErrorMsg(payError.message || "Грешка при записване наначалното плащане");
+            return;
+          }
+
+          const { error: updateError } = await supabase
+            .from("contracts")
+            .update({ paid_until_date: initialPaidUntil.toISOString().split("T")[0] })
+            .eq("id", inserted.id);
+
+          if (updateError) {
+            setErrorMsg(updateError.message || "Грешка при обновяване на валидността");
+            return;
+          }
+        }
+
         const { data: refreshed, error: reloadError } = await supabase
           .from("contracts")
           .select("*")
@@ -202,6 +240,13 @@ export default function HomePage() {
 
   const handleSavePayment = async (payment: any) => {
     try {
+      if (!payment.contract_id) {
+        setErrorMsg("Грешка: не е избран договор за записване на плащане.");
+        return;
+      }
+
+      const feeToUpdate = payment.expectedMonthlyFee || 0;
+
       const { error: payError } = await supabase.from("payments").insert({
         contract_id: payment.contract_id,
         payment_date: payment.paymentDate,
@@ -216,7 +261,28 @@ export default function HomePage() {
         return;
       }
 
-      const newPaidUntil = new Date(payment.contract.paid_until_date);
+      // Ако е подадена очаквана месечна такса, актуализираме договора
+      if (feeToUpdate > 0 && payment.contract_id) {
+        const { error: feeError } = await supabase
+          .from("contracts")
+          .update({ monthly_fee: feeToUpdate })
+          .eq("id", payment.contract_id);
+        if (feeError) {
+          setErrorMsg(feeError.message || "Грешка при обновяване на месечната такса");
+          return;
+        }
+      }
+
+      let contractData = payment.contract;
+      if (!contractData) {
+        const found = contracts.find((c) => c.id === payment.contract_id);
+        if (!found) {
+          setErrorMsg("Грешка: договорът не е намерен при записване на плащане.");
+          return;
+        }
+        contractData = found as any;
+      }
+      const newPaidUntil = new Date(contractData.paid_until_date || contractData.start_date || new Date().toISOString().split("T")[0]);
       newPaidUntil.setMonth(newPaidUntil.getMonth() + payment.monthsCovered);
 
       const { error: updateError } = await supabase

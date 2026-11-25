@@ -23,15 +23,26 @@ interface PaymentHistoryDrawerProps {
 
 export function PaymentHistoryDrawer({ contract, payments = [], onClose, onDeletePayment }: PaymentHistoryDrawerProps) {
   const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
+  const handleBack = () => onClose?.();
   const totalMonths = payments.reduce((sum, p) => sum + p.months_covered, 0);
 
   return (
     <>
       <Drawer open={!!contract} onOpenChange={(open) => { if (!open) onClose?.(); }}>
         <DrawerContent>
-          <DrawerHeader>
+          <DrawerHeader className="flex items-center justify-between">
             <DrawerTitle>История на плащанията</DrawerTitle>
             <div className="text-sm text-muted-foreground">{contract?.client_name}</div>
+            <Button variant="outline" size="sm" onClick={handleBack}>
+              <svg
+                className="h-4 w-4"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+              >
+                <path d="M15 18l-6-6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              Назад
+            </Button>
           </DrawerHeader>
           <div className="p-4 space-y-4">
             <div className="grid grid-cols-3 gap-4 text-sm">

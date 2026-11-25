@@ -21,15 +21,18 @@ const QUICK_SELECT_OPTIONS: PaymentQuickSelect[] = [
 ];
 
 export interface PaymentPayload {
+  contract_id: string;
+  contract?: { id?: string; client_name: string; monthly_fee?: number; monthlyFee?: number; paid_until_date?: string; start_date?: string; end_date?: string };
   amount: number;
   monthsCovered: number;
   paymentDate: string;
   paymentMethod: string;
   documentNumber: string;
+  expectedMonthlyFee?: number;
 }
 
 interface RecordPaymentDialogProps {
-  contract?: { id?: string; client_name: string; monthly_fee: number; paid_until_date: string; end_date: string };
+  contract?: { id?: string; client_name: string; monthly_fee?: number; monthlyFee?: number; paid_until_date: string; start_date: string; end_date: string };
   onClose?: () => void;
   onSave?: (payment: PaymentPayload) => void | Promise<void>;
 }
@@ -37,6 +40,7 @@ interface RecordPaymentDialogProps {
 export function RecordPaymentDialog({ contract, onClose, onSave }: RecordPaymentDialogProps) {
   const [monthsCovered, setMonthsCovered] = useState(1);
   const [manualAmount, setManualAmount] = useState("");
+  const [expectedMonthlyFee, setExpectedMonthlyFee] = useState("");
   const [paymentDate, setPaymentDate] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("Банков превод");
   const [documentNumber, setDocumentNumber] = useState("");
@@ -47,15 +51,24 @@ export function RecordPaymentDialog({ contract, onClose, onSave }: RecordPayment
       setPaymentDate(now.toISOString().split("T")[0]);
       setManualAmount("");
       setMonthsCovered(1);
+      setExpectedMonthlyFee("");
     }
   }, [contract]);
 
-  const monthlyFee = contract?.monthly_fee || 0;
-  const calculatedAmount = monthlyFee * monthsCovered;
-  const amount = manualAmount ? Number(manualAmount) : calculatedAmount;
+  const contractMonthlyFee = Number(contract?.monthly_fee ?? contract?.monthlyFee ?? 0);
+  const effectiveMonthlyFee = contractMonthlyFee > 0 ? contractMonthlyFee : (Number(expectedMonthlyFee) || 0);
+  const hasExpectedFee = contractMonthlyFee <= 0 && expectedMonthlyFee.trim() !== "";
+  const calculatedAmount = effectiveMonthlyFee * monthsCovered;
+  const amountFromMonths = manualAmount ? Number(manualAmount) : calculatedAmount;
+  const autoMonthsFromAmount = effectiveMonthlyFee > 0 && manualAmount ? Math.max(1, Math.round(Number(manualAmount) / effectiveMonthlyFee * 100) / 100) : monthsCovered;
+  const isExactMultiple = effectiveMonthlyFee > 0 && manualAmount ? Number(manualAmount) % effectiveMonthlyFee === 0 : true;
 
   const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setManualAmount(e.target.value);
+    if (effectiveMonthlyFee > 0 && e.target.value.trim() !== "") {
+      const calculatedMonths = Math.max(1, Math.round(Number(e.target.value) / effectiveMonthlyFee * 100) / 100);
+      setMonthsCovered(calculatedMonths);
+    }
   };
 
   const handleMonthsChange = (months: number) => {
@@ -63,50 +76,97 @@ export function RecordPaymentDialog({ contract, onClose, onSave }: RecordPayment
     setManualAmount("");
   };
 
+  const handleExpectedFeeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setExpectedMonthlyFee(e.target.value);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    await onSave?.({
-      amount,
-      monthsCovered,
-      paymentDate: paymentDate || new Date().toISOString().split("T")[0],
-      paymentMethod,
-      documentNumber,
-    });
-    onClose?.();
+    if (!contract) {
+      alert("Неможе да се запише плащане: не е избран договор.");
+      return;
+    }
+    const feeToUse = contractMonthlyFee > 0 ? contractMonthlyFee : Number(expectedMonthlyFee);
+    if (!feeToUse || feeToUse <= 0) {
+      alert("Моля, задайте очаквана месечна такса.");
+      return;
+    }
+    try {
+      await onSave?.({
+        contract_id: contract.id!,
+        contract,
+        amount: Number(amountFromMonths),
+        monthsCovered: autoMonthsFromAmount,
+        paymentDate: paymentDate || new Date().toISOString().split("T")[0],
+        paymentMethod,
+        documentNumber,
+        expectedMonthlyFee: contractMonthlyFee <= 0 ? feeToUse : undefined,
+      });
+      onClose?.();
+    } catch (err: any) {
+      alert("Грешка при записване на плащане: " + (err?.message || String(err)));
+    }
   };
 
   const newPaidUntil = contract
-    ? new Date(new Date(contract.paid_until_date).getTime() + monthsCovered * 30 * 24 * 60 * 60 * 1000)
+    ? new Date(new Date(contract.paid_until_date).getTime() + autoMonthsFromAmount * 30 * 24 * 60 * 60 * 1000)
+    : null;
+
+  const remainingMonths = contract
+    ? Math.max(
+        0,
+        Math.min(
+          12,
+          Math.ceil(
+            (new Date(contract.end_date).getTime() -
+              new Date(contract.paid_until_date || contract.start_date || contract.end_date).getTime()) /
+              (30 * 24 * 60 * 60 * 1000)
+          )
+        )
+      )
     : null;
 
   return (
     <Dialog open={!!contract} onOpenChange={(open: boolean) => { if (!open) onClose?.(); }}>
-      <DialogContent>
+      <DialogContent className="max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Запиши плащане</DialogTitle>
           <DialogDescription>
-            {contract ? `Клиент: <strong>{contract.client_name}</strong>` : ""}
+            {contract ? `Клиент: <strong>{contract?.client_name || contract?.clientName || "—"}</strong>` : ""}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4 pt-4">
-          <div className="space-y-1">
-            <Label>Текуща валидност до</Label>
-            <div className="text-sm text-muted-foreground">
-              {contract ? new Date(contract.paid_until_date).toLocaleDateString("bg-BG") : "—"}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label>Текуща валидност до</Label>
+              <div className="text-sm text-muted-foreground">
+                {contract ? new Date(contract.paid_until_date).toLocaleDateString("bg-BG") : "—"}
+              </div>
+            </div>
+            <div>
+              <Label>Оставащи месеци до края на договора</Label>
+              <div className="text-sm text-muted-foreground">
+                {remainingMonths !== null ? String(remainingMonths) : "—"}
+              </div>
             </div>
           </div>
-          <div className="space-y-1">
-            <Label>Оставащи месеци до края на договора</Label>
-            <div className="text-sm text-muted-foreground">
-              {contract
-                ? Math.ceil(
-                    (new Date(contract.end_date).getTime() -
-                      new Date(contract.paid_until_date).getTime()) /
-                      (30 * 24 * 60 * 60 * 1000)
-                  )
-                : "—"}
+
+          {contractMonthlyFee <= 0 && (
+            <div className="space-y-1">
+              <Label>Очаквана месечна такса (EUR)</Label>
+              <Input
+                type="number"
+                step="0.01"
+                placeholder="0.00"
+                value={expectedMonthlyFee}
+                onChange={handleExpectedFeeChange}
+                required
+              />
+              <p className="text-xs text-muted-foreground">
+                Задайте очакваната месечна такса, с която да се изчислят покритите месеци.
+              </p>
             </div>
-          </div>
+          )}
           <div className="space-y-1">
             <Label>Изберете период</Label>
             <div className="grid grid-cols-3 gap-2">
@@ -128,13 +188,18 @@ export function RecordPaymentDialog({ contract, onClose, onSave }: RecordPayment
               <Input
                 type="number"
                 step="0.01"
-                value={amount || String(calculatedAmount)}
+                value={amountFromMonths || String(calculatedAmount)}
                 onChange={handleAmountChange}
               />
               <span className="text-muted-foreground text-sm">EUR</span>
             </div>
+            {effectiveMonthlyFee > 0 && manualAmount && !isExactMultiple && (
+              <p className="text-xs text-yellow-600">
+                Сумата не е точната кратна на месечната такса. Месеците са изчислени заокръжено.
+              </p>
+            )}
             <p className="text-xs text-muted-foreground">
-              {monthsCovered} месец{monthsCovered === 1 ? "" : monthsCovered <= 4 ? "а" : "ца"} × {monthlyFee.toFixed(2)} EUR ={" "}
+              {monthsCovered} месец{monthsCovered === 1 ? "" : monthsCovered <= 4 ? "а" : "ца"} × {effectiveMonthlyFee.toFixed(2)} EUR ={" "}
               <span className="font-medium">{calculatedAmount.toFixed(2)} EUR</span>
             </p>
           </div>
@@ -174,14 +239,14 @@ export function RecordPaymentDialog({ contract, onClose, onSave }: RecordPayment
               </div>
             </div>
           )}
-          <DialogFooter>
+          <div className="flex justify-end gap-2 pt-4">
             <Button type="button" variant="outline" onClick={() => onClose?.()}>
               Отказ
             </Button>
             <Button type="submit">Запиши плащане</Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
-  );
+          </div>
+      </form>
+    </DialogContent>
+  </Dialog>
+);
 }

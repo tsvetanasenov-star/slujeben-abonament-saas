@@ -10,6 +10,8 @@ import { Plus } from "lucide-react";
 export interface NewContractPayload {
   client_name: string;
   identifier: string;
+  parkingAddress: string;
+  parkingSpaces: number;
   contact_info: string;
   contract_number: string;
   start_date: string;
@@ -36,7 +38,8 @@ export function NewContractDialog({ onOpenChange, open: openProp, onCreate }: Ne
   };
   const [formData, setFormData] = useState({
     client_name: "",
-    identifier: "",
+    parkingAddress: "",
+    parkingSpaces: 1,
     contact_info: "",
     contract_number: "",
     start_date: "",
@@ -59,9 +62,20 @@ export function NewContractDialog({ onOpenChange, open: openProp, onCreate }: Ne
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const monthlyFee = Number(formData.monthly_fee);
+    if (!monthlyFee || monthlyFee <= 0) {
+      alert("Месечната такса трябва да е по-голяма от 0.");
+      return;
+    }
+    // Construct identifier from parking fields: "Address (N паркоместа)" or just "N паркоместа" if address empty
+    const identifier = formData.parkingAddress?.trim()
+      ? `${formData.parkingAddress.trim()} (${formData.parkingSpaces} паркоместа)`
+      : `${formData.parkingSpaces} паркоместа`;
+
     await onCreate?.({
       client_name: formData.client_name,
-      identifier: formData.identifier,
+      parkingAddress: formData.parkingAddress,
+      parkingSpaces: formData.parkingSpaces,
       contact_info: formData.contact_info,
       contract_number: formData.contract_number,
       start_date: formData.start_date,
@@ -70,6 +84,7 @@ export function NewContractDialog({ onOpenChange, open: openProp, onCreate }: Ne
       notes: formData.notes,
       payNow: formData.payNow,
       monthsCovered: formData.monthsCovered,
+      identifier: identifier,
     });
     setOpen(false);
   };
@@ -102,16 +117,27 @@ export function NewContractDialog({ onOpenChange, open: openProp, onCreate }: Ne
               />
             </div>
             <div className="space-y-1">
-              <Label>Рег. номер / обект / идентификатор</Label>
+              <Label>Адрес на паркоместата</Label>
               <Input
-                placeholder="Напр. СА 1234 АВ"
-                value={formData.identifier}
-                onChange={(e) => setFormData({ ...formData, identifier: e.target.value })}
+                placeholder="Напр. ул. ... №..."
+                value={formData.parkingAddress}
+                onChange={(e) => setFormData({ ...formData, parkingAddress: e.target.value })}
                 required
               />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1">
+              <Label>Брой на паркоместата</Label>
+              <Input
+                type="number"
+                min="1"
+                step="1"
+                placeholder="Напр. 3"
+                value={formData.parkingSpaces}
+                onChange={(e) => setFormData({ ...formData, parkingSpaces: parseInt(e.target.value) || 1 })}
+              />
+            </div>
             <div className="space-y-1">
               <Label>Телефон / имейл</Label>
               <Input
@@ -120,16 +146,31 @@ export function NewContractDialog({ onOpenChange, open: openProp, onCreate }: Ne
                 onChange={(e) => setFormData({ ...formData, contact_info: e.target.value })}
               />
             </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1">
-              <Label>Номер на договора</Label>
+              <Label>Месечна такса</Label>
               <Input
-                placeholder="Напр. Д-2025-001"
+                type="number"
+                min="0.01"
+                step="0.01"
+                placeholder="0.00"
+                value={formData.monthly_fee}
+                onChange={(e) => setFormData({ ...formData, monthly_fee: e.target.value })}
+                required
+              />
+              <p className="text-xs text-muted-foreground">
+                Очаквана месечна сума за плащане (минимум 0.01 EUR).
+              </p>
+            </div>
+            <div className="space-y-1">
+              <Label>Входящ номер</Label>
+              <Input
+                placeholder="Напр. Вх. № 2026-..."
                 value={formData.contract_number}
                 onChange={(e) => setFormData({ ...formData, contract_number: e.target.value })}
               />
             </div>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1">
               <Label>Начална дата</Label>
               <Input
@@ -138,20 +179,6 @@ export function NewContractDialog({ onOpenChange, open: openProp, onCreate }: Ne
                 onChange={handleStartDateChange}
                 required
               />
-            </div>
-            <div className="space-y-1">
-              <Label>Месечна такса</Label>
-              <div className="flex items-center gap-2">
-                <Input
-                  type="number"
-                  step="0.01"
-                  placeholder="0.00"
-                  value={formData.monthly_fee}
-                  onChange={(e) => setFormData({ ...formData, monthly_fee: e.target.value })}
-                  required
-                />
-                <span className="text-muted-foreground text-sm">EUR</span>
-              </div>
             </div>
           </div>
           <div className="space-y-1">
