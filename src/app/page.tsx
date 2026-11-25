@@ -270,7 +270,7 @@ export default function HomePage() {
                 className="pl-9 bg-white"
               />
             </div>
-            <Button type="button" className="gap-1.5">
+            <Button type="button" onClick={() => setNewContractOpen(true)} className="gap-1.5">
               <Plus className="h-4 w-4" />
               Нов договор
             </Button>
@@ -366,48 +366,29 @@ export default function HomePage() {
           />
         )}
       </div>
-</main>
 
-  {/* New Contract Dialog */}
-  <NewContractDialog
-    onOpenChange={setNewContractOpen}
-    open={newContractOpen}
-    onCreate={handleCreateContract}
-  />
+      {/* New Contract Dialog */}
+      <NewContractDialog
+        onOpenChange={setNewContractOpen}
+        open={newContractOpen}
+        onCreate={handleCreateContract}
+      />
 
-  {/* Payment Dialog */}
-  <RecordPaymentDialog
-    contract={paymentContract}
-    onClose={() => {
-      setPaymentOpen(false);
-      setPaymentContract(null);
-    }}
-    onSave={(payment) => handleSavePayment(payment)}
-  />
+      {/* Payment Dialog */}
+      <RecordPaymentDialog
+        contract={paymentContract ?? undefined}
+        onClose={() => {
+          setPaymentOpen(false);
+          setPaymentContract(null);
+        }}
+        onSave={(payment) => handleSavePayment(payment)}
+      />
 
-  {/* History Drawer */}
-  <PaymentHistoryDrawer
-    contract={historyContract}
-    onClose={handleHistoryClose}
-  />
-{/* New Contract Dialog */}
-  <NewContractDialog
-    onOpenChange={setNewContractOpen}
-    open={newContractOpen}
-    onCreate={handleCreateContract}
-  />
-
-  {/* Payment Dialog */}
-  <RecordPaymentDialog
-    contract={paymentContract}
-    onClose={() => {
-      setPaymentOpen(false);
-      setPaymentContract(null);
-    }}
-    onSave={(payment) => handleSavePayment(payment)}
-  />
-
-  /* Dialogs are placed inside <main> tag above */
-
+      {/* History Drawer */}
+      <PaymentHistoryDrawer
+        contract={historyContract ?? undefined}
+        onClose={handleHistoryClose}
+      />
+    </main>
   );
 } 

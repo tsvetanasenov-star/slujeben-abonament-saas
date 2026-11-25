@@ -1,10 +1,9 @@
 "use client";
 
-import { useState } from "react";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Trash2, Clock } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import { formatDateBG } from "@/components/shared/StatusBadge";
 
 interface PaymentHistoryDrawerProps {
@@ -23,17 +22,12 @@ interface PaymentHistoryDrawerProps {
 }
 
 export function PaymentHistoryDrawer({ contract, payments = [], onClose, onDeletePayment }: PaymentHistoryDrawerProps) {
-  const [open, setOpen] = useState(false);
-
   const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
   const totalMonths = payments.reduce((sum, p) => sum + p.months_covered, 0);
 
   return (
     <>
-      <Button variant="outline" size="sm" onClick={() => setOpen(true)}>
-        <Clock className="mr-2 h-4 w-4" /> История
-      </Button>
-      <Drawer open={open} onOpenChange={setOpen}>
+      <Drawer open={!!contract} onOpenChange={(open) => { if (!open) onClose?.(); }}>
         <DrawerContent>
           <DrawerHeader>
             <DrawerTitle>История на плащанията</DrawerTitle>

@@ -11,6 +11,17 @@ interface DrawerProps extends React.HTMLAttributes<HTMLDivElement> {
 
 const Drawer = React.forwardRef<HTMLDivElement, DrawerProps>(
   ({ className, open, onOpenChange, children, ...props }, ref) => {
+    React.useEffect(() => {
+      if (!open) return;
+      const handleKeyDown = (e: KeyboardEvent) => {
+        if (e.key === "Escape") {
+          onOpenChange(false);
+        }
+      };
+      document.addEventListener("keydown", handleKeyDown);
+      return () => document.removeEventListener("keydown", handleKeyDown);
+    }, [open, onOpenChange]);
+
     if (!open) return null;
     return (
       <div
@@ -23,10 +34,13 @@ const Drawer = React.forwardRef<HTMLDivElement, DrawerProps>(
         {...props}
       >
         <div
-          className="fixed inset-0 bg-background/80 backdrop-blur-sm"
-          onClick={(e) => e.stopPropagation()}
+          className="fixed inset-0 bg-background/80 backdrop-blur-sm z-20"
+          onClick={() => onOpenChange(false)}
         />
-        <div className="flex-1 flex-col bg-background border-l border-input shadow-lg">
+        <div
+          className="flex-1 flex-col bg-background border-l border-input shadow-lg z-40"
+          onClick={(e) => e.stopPropagation()}
+        >
           {children}
         </div>
       </div>
