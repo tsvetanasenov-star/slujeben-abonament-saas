@@ -10,21 +10,32 @@ interface PaymentHistoryDrawerProps {
   contract?: { id: string; client_name: string };
   payments?: Array<{
     id: string;
-    payment_date: string;
-    amount: number;
-    months_covered: number;
-    payment_method: string;
+    payment_date?: string;
+    amount?: number;
+    months_covered?: number;
+    payment_method?: string;
     document_number?: string | null;
-    created_at: string;
+    created_at?: string;
   }>;
   onClose?: () => void;
   onDeletePayment?: (id: string) => void;
 }
 
-export function PaymentHistoryDrawer({ contract, payments = [], onClose, onDeletePayment }: PaymentHistoryDrawerProps) {
-  const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
+export function PaymentHistoryDrawer({
+  contract,
+  payments = [],
+  onClose,
+  onDeletePayment,
+}: PaymentHistoryDrawerProps) {
+  const safeAmount = (p: any) => Number(p.amount ?? p.amount_covered ?? 0);
+  const safeMonths = (p: any) => Number(p.months_covered ?? p.months ?? 0);
+  const safeDate = (p: any) => p.payment_date ?? p.date ?? "";
+  const safeMethod = (p: any) => p.payment_method ?? p.method ?? "";
+  const safeDocument = (p: any) => p.document_number ?? p.document ?? "—";
+
+  const totalPaid = payments.reduce((sum, p) => sum + safeAmount(p), 0);
+  const totalMonths = payments.reduce((sum, p) => sum + safeMonths(p), 0);
   const handleBack = () => onClose?.();
-  const totalMonths = payments.reduce((sum, p) => sum + p.months_covered, 0);
 
   return (
     <>
@@ -72,13 +83,18 @@ export function PaymentHistoryDrawer({ contract, payments = [], onClose, onDelet
                   </TableRow>
                 </TableHeader>
                 <TableBody>
+                  {payments.length === 0 && (
+                    <div className="text-center py-4 text-sm text-muted-foreground">
+                      Няма записани плащания за този договор
+                    </div>
+                  )}
                   {payments.map((p) => (
                     <TableRow key={p.id}>
-                      <TableCell>{formatDateBG(p.payment_date)}</TableCell>
-                      <TableCell className="text-right">{p.amount.toFixed(2)} EUR</TableCell>
-                      <TableCell>{p.months_covered}</TableCell>
-                      <TableCell>{p.payment_method}</TableCell>
-                      <TableCell>{p.document_number || "—"}</TableCell>
+                      <TableCell>{formatDateBG(safeDate(p))}</TableCell>
+                      <TableCell className="text-right">{safeAmount(p).toFixed(2)} EUR</TableCell>
+                      <TableCell>{safeMonths(p)}</TableCell>
+                      <TableCell>{safeMethod(p)}</TableCell>
+                      <TableCell>{safeDocument(p)}</TableCell>
                       <TableCell className="text-right">
                         <Button
                           variant="destructive"
