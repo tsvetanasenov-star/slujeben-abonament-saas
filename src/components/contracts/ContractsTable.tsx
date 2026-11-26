@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Contract } from "@/types/database";
 import { formatContractDisplay } from "@/lib/contracts";
-import { Plus, Euro, Clock, RefreshCw } from "lucide-react";
+import { Plus, Euro, Clock, RefreshCw, Trash2 } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { startOfDay } from "@/lib/useToday";
 
@@ -17,6 +17,7 @@ interface ContractsTableProps {
   onRenew: (contract: Contract) => void;
   onNewContract: () => void;
   today: Date;
+  onDelete: (contractId: string, clientName: string) => Promise<void>;
 }
 
 export function ContractsTable({
@@ -26,6 +27,7 @@ export function ContractsTable({
   onRenew,
   onNewContract,
   today,
+  onDelete,
 }: ContractsTableProps) {
   const [openRenew, setOpenRenew] = useState<Contract | null>(null);
 
@@ -136,6 +138,15 @@ export function ContractsTable({
                           Подновяване
                         </Button>
                       )}
+<Button
+  variant="destructive"
+  size="sm"
+  onClick={() => onDelete(contract.id, contract.client_name)}
+  className="h-8 px-2"
+>
+  <Trash2 className="h-3 w-3 mr-1" />
+  Изтрий
+</Button>
                     </div>
                   </TableCell>
                 </TableRow>

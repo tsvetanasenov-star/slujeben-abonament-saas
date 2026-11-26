@@ -133,12 +133,12 @@ export function RecordPaymentDialog({ contract, onClose, onSave }: RecordPayment
           <DialogTitle>Запиши плащане</DialogTitle>
           <DialogDescription>
             {contract ? (
-              <p className="text-sm text-muted-foreground">
+              <span className="block text-sm text-muted-foreground">
                 Клиент:{" "}
                 <strong className="font-semibold text-foreground">
                   {contract?.client_name || "—"}
                 </strong>
-              </p>
+              </span>
             ) : ""}
           </DialogDescription>
         </DialogHeader>

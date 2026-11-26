@@ -13,6 +13,7 @@ import { Search, Plus, AlertTriangle, Clock, CalendarCheck, FileCheck2 } from "l
 import { NewContractDialog } from "@/components/contracts/NewContractDialog";
 import { RecordPaymentDialog } from "@/components/contracts/RecordPaymentDialog";
 import { PaymentHistoryDrawer } from "@/components/contracts/PaymentHistoryDrawer";
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 
 type FilterTab = "all" | "overdue" | "upcoming" | "expiring" | "archived";
 
@@ -312,6 +313,57 @@ export default function HomePage() {
     setHistoryOpen(false);
     setHistoryContract(null);
   };
+const handleDeleteContract = async (contractId: string, clientName: string) => {
+    const confirmed = window.confirm(
+      `Сигурни ли сте, че искате да изтриете договора за ${clientName}?
+
+Действието ще:
+1. Изтрие всички плащания, свързани с този договор
+2. Изтрие самия договор
+
+Това действие е необратимо.`
+    );
+
+    if (!confirmed) return;
+
+    try {
+      // първо изтриваме плащанията за този договор
+      const { error: payError } = await supabase
+        .from("payments")
+        .delete()
+        .eq("contract_id", contractId);
+
+      if (payError) {
+        setErrorMsg("Грешка при изтриване на плащанията: " + payError.message);
+        return;
+      }
+
+      // затем изтриваме самия договор
+      const { error: contractError } = await supabase
+        .from("contracts")
+        .delete()
+        .eq("id", contractId);
+
+      if (contractError) {
+        setErrorMsg("Грешка при изтриване на договора: " + contractError.message);
+        return;
+      }
+
+      // обновяваме локалния state и презареждаме данните
+      const { data: refreshed, error: reloadError } = await supabase
+        .from("contracts")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (!reloadError && refreshed) {
+        setContracts(refreshed);
+      }
+
+      setErrorMsg(null);
+    } catch (err) {
+      setErrorMsg(err instanceof Error ? err.message : "Неочаквана грешка при изтриване");
+    }
+  };
 
   return (
     <main className="min-h-screen bg-slate-50 p-6">
@@ -428,6 +480,7 @@ export default function HomePage() {
             onViewHistory={(contract) => handleViewHistory(contract)}
             onRenew={() => {}}
             onNewContract={() => handleNewContract()}
+onDelete={handleDeleteContract}
             today={today ?? baseDate ?? new Date(2026, 0, 1)}
           />
         )}
