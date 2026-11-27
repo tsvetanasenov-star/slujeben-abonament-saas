@@ -128,14 +128,14 @@ export function RecordPaymentDialog({ contract, onClose, onSave }: RecordPayment
 
   return (
     <Dialog open={!!contract} onOpenChange={(open: boolean) => { if (!open) onClose?.(); }}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-h-[90vh] overflow-y-auto bg-white border border-sky-300">
         <DialogHeader>
           <DialogTitle>Запиши плащане</DialogTitle>
           <DialogDescription>
             {contract ? (
               <span className="block text-sm text-muted-foreground">
                 Клиент:{" "}
-                <strong className="font-semibold text-foreground">
+                <strong className="font-semibold text-slate-900">
                   {contract?.client_name || "—"}
                 </strong>
               </span>
@@ -146,13 +146,13 @@ export function RecordPaymentDialog({ contract, onClose, onSave }: RecordPayment
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label>Текуща валидност до</Label>
-              <div className="text-sm text-muted-foreground">
+              <div className="text-sm text-slate-700">
                 {contract ? new Date(contract.paid_until_date).toLocaleDateString("bg-BG") : "—"}
               </div>
             </div>
             <div>
               <Label>Оставащи месеци до края на договора</Label>
-              <div className="text-sm text-muted-foreground">
+              <div className="text-sm text-slate-700">
                 {remainingMonths !== null ? String(remainingMonths) : "—"}
               </div>
             </div>
@@ -169,7 +169,7 @@ export function RecordPaymentDialog({ contract, onClose, onSave }: RecordPayment
                 onChange={handleExpectedFeeChange}
                 required
               />
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-slate-700">
                 Задайте очакваната месечна такса, с която да се изчислят покритите месеци.
               </p>
             </div>
@@ -198,16 +198,16 @@ export function RecordPaymentDialog({ contract, onClose, onSave }: RecordPayment
                 value={amountFromMonths || String(calculatedAmount)}
                 onChange={handleAmountChange}
               />
-              <span className="text-muted-foreground text-sm">EUR</span>
+              <span className="text-slate-700 text-sm">EUR</span>
             </div>
             {effectiveMonthlyFee > 0 && manualAmount && !isExactMultiple && (
               <p className="text-xs text-yellow-600">
                 Сумата не е точната кратна на месечната такса. Месеците са изчислени заокръжено.
               </p>
             )}
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-slate-700">
               {monthsCovered} месец{monthsCovered === 1 ? "" : monthsCovered <= 4 ? "а" : "ца"} × {effectiveMonthlyFee.toFixed(2)} EUR ={" "}
-              <span className="font-medium">{calculatedAmount.toFixed(2)} EUR</span>
+              <span className="font-medium text-slate-900">{calculatedAmount.toFixed(2)} EUR</span>
             </p>
           </div>
           <div className="grid grid-cols-2 gap-4">
@@ -220,7 +220,7 @@ export function RecordPaymentDialog({ contract, onClose, onSave }: RecordPayment
               <select
                 value={paymentMethod}
                 onChange={(e) => setPaymentMethod(e.target.value)}
-                className="w-full border rounded px-2 py-1 bg-background"
+                className="w-full border rounded px-2 py-1 bg-white border-sky-300"
               >
                 <option>Банков превод</option>
                 <option>ПОС терминал</option>
