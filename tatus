@@ -1,0 +1,11 @@
+[33mcommit efc8684c3c992ece9c0d07571f557cf751b1d796[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m)[m
+Author: tsvetanasenov-star <tsvetanasenov79@gmail.com>
+Date:   Fri Nov 27 16:03:21 2026 +0200
+
+    Fix payment history modal, totals, and hydration errors
+
+[33mcommit f6537b22595ccc76e2aec36497ab96f6bb3a41c2[m
+Author: tsvetanasenov-star <tsvetanasenov79@gmail.com>
+Date:   Thu Nov 26 13:59:06 2026 +0200
+
+    Fix payment history loading, totals, and modal layout
